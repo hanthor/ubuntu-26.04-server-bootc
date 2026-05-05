@@ -9,12 +9,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Restore the dpkg/apt database from the pristine ubuntu:26.04 stage.
 # The base image ran bootc-rootfs.sh which wiped /var; apt-get will not
 # work without a valid dpkg status and the supporting directory tree.
-RUN --mount=type=bind,from=dpkg-state,source=/var,target=/mnt/var \
-    cp -a /mnt/var/lib/dpkg /var/lib/ && \
-    mkdir -p \
-        /var/cache/apt/archives/partial \
-        /var/lib/apt/lists/partial \
-        /var/log/apt
+COPY --from=dpkg-state /var/lib/dpkg /var/lib/dpkg
+RUN mkdir -p /var/cache/apt/archives/partial /var/lib/apt/lists/partial /var/log/apt
 
 # Bring bootc-rootfs.sh into the build context so we can re-run it.
 FROM scratch AS ctx
