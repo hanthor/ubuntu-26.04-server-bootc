@@ -35,6 +35,8 @@ jobs:
 
       - name: Build image
         run: sudo $(which just) build
+        env:
+          PODMAN_EXTRA_ARGS: --platform linux/${{ matrix.platform.arch }}
 
       - name: Run image structure tests
         run: just test-structure

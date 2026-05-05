@@ -7,6 +7,7 @@ sudo_cmd       := env("SUDO_CMD", "sudo")
 # Build the server bootc image
 build:
     {{sudo_cmd}} {{container_runtime}} build \
+        ${PODMAN_EXTRA_ARGS:-} \
         -f Containerfile \
         -t "{{image_name}}:{{image_tag}}" \
         --label "org.opencontainers.image.source=https://github.com/hanthor/ubuntu-26.04-server-bootc" \
