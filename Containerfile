@@ -9,8 +9,11 @@ FROM ghcr.io/hanthor/ubuntu-26.04-bootc:latest AS system
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Recreate apt working directories wiped by bootc-rootfs.sh in the base image.
+RUN mkdir -p /var/lib/apt/lists/partial /var/lib/dpkg/updates /var/lib/dpkg/info /var/cache/apt/archives/partial
+
 # Server packages: provisioning, networking, firewall, time sync, snaps.
-RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root \
+RUN --mount=type=tmpfs,dst=/tmp \
     apt-get update -y && \
     apt-get install -y \
         chrony \
