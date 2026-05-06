@@ -33,14 +33,6 @@ jobs:
       - name: Setup Just
         uses: extractions/setup-just@v3
 
-      - name: Build image
-        run: sudo $(which just) build
-        env:
-          PODMAN_EXTRA_ARGS: --platform linux/${{ matrix.platform.arch }}
-
-      - name: Run image structure tests
-        run: just test-structure
-
       - name: Login to GHCR
         if: github.event_name != 'pull_request'
         env:
@@ -48,6 +40,14 @@ jobs:
         run: |
           echo "${GITHUB_TOKEN}" | sudo podman login \
             -u "${{ github.actor }}" --password-stdin ghcr.io
+
+      - name: Build image
+        run: sudo $(which just) build
+        env:
+          PODMAN_EXTRA_ARGS: --platform linux/${{ matrix.platform.arch }}
+
+      - name: Run image structure tests
+        run: just test-structure
 
       - name: Push to GHCR
         if: github.event_name != 'pull_request'
