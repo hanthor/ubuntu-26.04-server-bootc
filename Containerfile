@@ -1,22 +1,47 @@
 # Provides a pristine dpkg/apt database to restore in the system stage.
 FROM docker.io/library/ubuntu:26.04 AS dpkg-state
 
-# Ubuntu 26.04 server image — derives from the minimal bootc base.
+# Copy build scripts into build context
+FROM scratch AS ctx
+COPY shared/ /shared
+
+# ── Bootc builder ─────────────────────────────────────────────────────────────
+FROM docker.io/library/ubuntu:26.04 AS builder
+
+RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root --mount=type=tmpfs,dst=/boot \
+    apt-get update -y && \
+    apt-get install -y \
+        build-essential \
+        curl \
+        git \
+        go-md2man \
+        libostree-dev \
+        libzstd-dev \
+        make \
+        ostree \
+        pkgconf && \
+    apt-get clean -y && rm -rf /var/lib/apt/lists/*
+
+ENV CARGO_HOME=/tmp/rust
+ENV RUSTUP_HOME=/tmp/rust
+WORKDIR /home/build
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    curl --proto '=https' --tlsv1.2 -sSf "https://sh.rustup.rs" | sh -s -- --profile minimal -y && \
+    sh -c ". ${RUSTUP_HOME}/env ; /ctx/shared/build.sh"
+
+# ── System stage ──────────────────────────────────────────────────────────────
 FROM docker.io/library/ubuntu:26.04 AS system
+
+# Copy bootc binary from builder
+COPY --from=builder /usr/local/bin/bootc /usr/bin/bootc
 
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Restore the dpkg/apt database from the pristine ubuntu:26.04 stage.
-# The base image ran bootc-rootfs.sh which wiped /var; apt-get will not
+# The bootc-rootfs.sh step (later) will wipe /var; apt-get will not
 # work without a valid dpkg status and the supporting directory tree.
 COPY --from=dpkg-state /var/lib/dpkg /var/lib/dpkg
 RUN mkdir -p /var/cache/apt/archives/partial /var/lib/apt/lists/partial /var/log/apt
-
-# Bring bootc-rootfs.sh into the build context so we can re-run it.
-FROM scratch AS ctx
-COPY shared/ /shared
-
-FROM system
 
 # Server packages: provisioning, networking, firewall, time sync, snaps.
 RUN --mount=type=tmpfs,dst=/tmp \
