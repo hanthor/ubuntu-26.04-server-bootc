@@ -6,7 +6,7 @@ sudo_cmd       := env("SUDO_CMD", "sudo")
 
 # Build the server bootc image
 build:
-    {{sudo_cmd}} {{container_runtime}} build --authfile /root/.config/containers/auth.json \
+    {{sudo_cmd}} {{container_runtime}} build \
         ${PODMAN_EXTRA_ARGS:-} \
         -f Containerfile \
         -t "{{image_name}}:{{image_tag}}" \
