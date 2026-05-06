@@ -33,22 +33,6 @@ jobs:
       - name: Setup Just
         uses: extractions/setup-just@v3
 
-      - name: Setup podman auth
-        if: github.event_name != 'pull_request'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          sudo mkdir -p /etc/containers
-          echo "${GITHUB_TOKEN}" | sudo podman login \
-            -u "oauth2accesstoken" --password-stdin \
-            --authfile /root/.config/containers/auth.json ghcr.io
-
-      - name: Pre-pull base image
-        if: github.event_name != 'pull_request'
-        run: |
-          sudo podman pull --authfile /root/.config/containers/auth.json \
-            ghcr.io/ubuntu-bootc/ubuntu-26.04-bootc:latest
-
       - name: Build image
         run: sudo $(which just) build
         env:
@@ -57,11 +41,18 @@ jobs:
       - name: Run image structure tests
         run: just test-structure
 
+      - name: Login to GHCR
+        if: github.event_name != 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "${GITHUB_TOKEN}" | sudo podman login \
+            -u "oauth2accesstoken" --password-stdin ghcr.io
+
       - name: Push to GHCR
         if: github.event_name != 'pull_request'
         run: |
           sudo podman push \
-            --authfile /root/.config/containers/auth.json \
             "${IMAGE_NAME}:latest" \
             "${IMAGE_REGISTRY}/${IMAGE_NAME}:latest-${{ matrix.platform.arch }}"
 
@@ -69,7 +60,7 @@ jobs:
         if: github.event_name != 'pull_request'
         run: |
           mkdir -p /tmp/digests
-          sudo skopeo inspect --authfile /root/.config/containers/auth.json --no-tags \
+          sudo skopeo inspect --no-tags \
             "docker://${IMAGE_REGISTRY}/${IMAGE_NAME}:latest-${{ matrix.platform.arch }}" | \
             python3 -c "import json,sys; print(json.load(sys.stdin)['Digest'])" \
             > /tmp/digests/${{ matrix.platform.arch }}.txt
